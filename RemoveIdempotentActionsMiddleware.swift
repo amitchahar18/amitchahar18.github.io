@@ -1,0 +1,53 @@
+//
+//  RemoveIdempotentActionsMiddleware.swift
+//  ReSwift-Todo
+//
+//  Created by Christian Tietze on 15/09/16.
+//  Copyright © 2016 ReSwift. All rights reserved.
+//
+
+import Foundation
+import ReSwift
+
+/// Consumes some actions that don't change the state.
+///
+/// Admitted, this is not the most scalable and useful middleware
+/// I could've come up with, but it serves to demonstrate
+/// how you can interrupt the action handling chain.
+///
+/// In reality, I'd suggest you stop firing events when the
+/// view knows nothing has changed.
+let removeIdempotentActionsMiddleware: Middleware<ToDoListState> = { dispatch, getState in
+    return { next in
+        return { action in
+
+            guard let state = getState() else {
+                next(action)
+                return
+            }
+
+            if let action = action as? RenameToDoListAction,
+                action.newName == state.toDoList.title {
+
+                print("Ignoring \(action)")
+
+                return
+            } else if case let ToDoAction.rename(toDoID, title: title) = action,
+                let toDo = state.toDoList.toDo(toDoID: toDoID),
+                toDo.title == title {
+
+                print("Ignoring \(action)")
+
+                return
+            } else if let action = action as? SelectionAction,
+                action.selectionState == state.selection {
+
+                print("Ignoring \(action)")
+
+                return
+            }
+            
+            return next(action)
+        }
+    }
+}
